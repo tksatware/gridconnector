@@ -253,7 +253,6 @@ namespace satag
                 if (mLength <= 0x7fffffff)
                 {
                   mOut.tag((int)mLength);
-                  countItem();
                   mState = kSigma;
                 }
                 else
@@ -673,6 +672,7 @@ namespace satag
 
     void decoder::readTagItem(int minor)
     {
+      // note that tags do not count as item!
       {
         int len = minor; //  &0x1f;
         if (len < 24)
@@ -694,7 +694,6 @@ namespace satag
                 if (available(1))
                 {
                   mOut.tag(take1());
-                  countItem();
                 }
                 else
                 {
@@ -708,7 +707,6 @@ namespace satag
                 {
                   int value = take2();
                   mOut.tag(value);
-                  countItem();
                 }
                 else
                 {
@@ -722,7 +720,6 @@ namespace satag
                 {
                   int value = take4();
                   mOut.tag(value);
-                  countItem();
                 }
                 else
                 {
@@ -737,7 +734,6 @@ namespace satag
                 {
                   int64_t value = take8();
                   mOut.tag(value);
-                  countItem();
                 }
                 else
                 {

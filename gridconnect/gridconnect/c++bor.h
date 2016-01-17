@@ -57,6 +57,7 @@ namespace satag
       illegaltag,         // a tag above 32bit might be... illegal?
       unevenmap,          // a map wasn't even
       unexpectedbreak,    // a break came in, but we have nothing on our stack
+      notimplemented,     // bummer, I was lazy
       nodata,   // the input array stalled
     } error;
 
