@@ -29,11 +29,48 @@
 #include "c++bor.h"
 #include <cassert>
 #include <iostream>
+#include <cmath>
 
 namespace satag
 {
   namespace cbor
   {
+
+    namespace internal
+    {
+      float readHalfPrecisionBigEndian(uint8_t* mem)
+      {
+        // see rfc7049, appendix D
+        int half = (mem[0] << 8) + mem[1];
+        int exp = (half >> 10) & 0x1f;
+        int mant = half & 0x3ff;
+        float val;
+        if (exp == 0) val = ldexp((float)mant, -24);
+        else if (exp != 31) val = ldexp(float(mant) + 1024.f, exp - 25);
+        else val = mant == 0 ? INFINITY : NAN;
+        return half & 0x8000 ? -val : val;
+      }
+      float readSinglePrecisionBigEndian(uint8_t* mem)
+      {
+        uint32_t p;
+        p = (mem[0] << 24) | (mem[1] << 16) | (mem[2] << 8) | (mem[3]);
+        float result = *(float*)(&p);
+        return result;
+      }
+      double readDoublePrecisionBigEndian(uint8_t* mem)
+      {
+        uint64_t v = (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        v = (v << 8) + (*mem++);
+        double result = *(double*)(&v);
+        return result;
+      }
+    }
     decoder::~decoder()
     {
       delete[] mBuffer;
@@ -117,18 +154,49 @@ namespace satag
             switch (mMajor)
             {
               case 0:
-              case 1:
-                // if the value is larger than 32bit, value
+                // if the value is larger than positive signed 32bitvalue
                 if (mValue > 0x7fffffff)
                 {
-                  mOut.int64(mMajor == 0 ? mValue : -mValue);
-                  countItem();
+                  if (mValue > 0x7fffffffffffffff)
+                  {
+
+                    mOut.int64p(mValue);
+                  }
+                  else
+                  {
+                    mOut.int64(mValue);
+                  }
                 }
                 else
                 {
-                  mOut.int32((int)(mMajor == 0 ? mValue : -mValue));
-                  countItem();
+                  mOut.int32((int)mValue);
                 }
+                countItem();
+                break;
+              case 1:
+                // if the value is larger than a positive signed 32bit value
+                if (mValue > 0x7fffffff)
+                {
+                  if (mValue > 0x7fffffffffffffff)
+                  {
+
+                    mOut.int64n(mValue+1);
+                  }
+                  else
+                  {
+                    int64_t val = mValue;
+                    val = -(val+1);
+                    mOut.int64(val);
+                  }
+                }
+                else
+                {
+                  int val = (int)mValue;
+                  val = -(val + 1);
+
+                  mOut.int32(val);
+                }
+                countItem();
                 break;
               case 2:
                 mLength = mValue;
@@ -161,7 +229,7 @@ namespace satag
                 break;
               case 5:
                 {
-                  // array
+                  // map
                   mLength = mValue;
                   if (mLength == 0)
                   {
@@ -174,7 +242,7 @@ namespace satag
                   {
                     // array is opened and will be closed on break item
                     mStack.push_back(stackitem(mState, mLength));
-                    mOut.array(mLength);
+                    mOut.map(mLength);
                     mMapKeyAhead = true;
                   }
                   // in the end, state is on the stack and needs continuing
@@ -281,7 +349,18 @@ namespace satag
               }
             }
             break;
+          case kReadFloatValue:
+            {
+              mBuffer[mCollected++] = take1();
+              if (mCollected == mLength)
+              {
+                readFloatValue();
+              }
+            }
+            break;
           case kError:
+            // consume the bytes until reset
+            take1();
             // do nothing, it is broken now...
             // TODO: Consider resetting on a self describing CBOR
             break;
@@ -304,7 +383,7 @@ namespace satag
         if (len < 24)
         {
           // len is immediate value (see 
-          mOut.int32((mMajor == 0) ? len : (-len));
+          mOut.int32((mMajor == 0) ? len : (-(len+1)));
           countItem();
           // state stays kSigma
         }
@@ -321,7 +400,7 @@ namespace satag
                 if (available(1))
                 {
                   int value = take1();
-                  mOut.int32(mMajor == 0 ? value : -value);
+                  mOut.int32(mMajor == 0 ? value : -(value+1));
                   countItem();
                 }
                 else
@@ -335,7 +414,7 @@ namespace satag
                 if (available(2))
                 {
                   int value = take2();
-                  mOut.int32(mMajor == 0 ? value : -value);
+                  mOut.int32(mMajor == 0 ? value : -(value + 1));
                   countItem();
                 }
                 else
@@ -349,7 +428,7 @@ namespace satag
                 if (available(4))
                 {
                   int value = take4();
-                  mOut.int32(mMajor == 0 ? value : -value);
+                  mOut.int32(mMajor == 0 ? value : -(value + 1));
                   countItem();
                 }
                 else
@@ -363,8 +442,15 @@ namespace satag
               {
                 if (available(8))
                 {
-                  int64_t value = take8();
-                  mOut.int64(mMajor == 0 ? value : -value);
+                  uint64_t value = take8();
+                  if (mMajor == 0)
+                  {
+                    mOut.int64p(value);
+                  }
+                  else
+                  {
+                    mOut.int64n(value + 1);
+                  }
                   countItem();
                 }
                 else
@@ -544,7 +630,7 @@ namespace satag
       mLength = minor;
       if (minor < 24)
       {
-        mOut.array(minor);
+        mOut.map(minor);
         if (minor == 0)
         {
           mOut.breakend();
@@ -575,7 +661,7 @@ namespace satag
           case 31:
             mLength = kIndefinite;
             mStack.push_back(stackitem(kReadMap, mLength));
-            mOut.array(mLength);
+            mOut.map(mLength);
             mMapKeyAhead = true;
             break;
           default:
@@ -690,10 +776,22 @@ namespace satag
           mState = kReadSimpleValue;
           break;
         case 25:
+          // read half precision
+          assert(mCollected == 0);
+          mLength = 2;
+          mState = kReadFloatValue;
           break;
         case 26:
+          // read single precision
+          assert(mCollected == 0);
+          mLength = 4;
+          mState = kReadFloatValue;
           break;
         case 27:
+          // read doubleprecision
+          assert(mCollected == 0);
+          mLength = 8;
+          mState = kReadFloatValue;
           break;
         case 31:
           // BREAK
@@ -743,6 +841,33 @@ namespace satag
         default:
           raiseError(illegalsimple);
       }
+    }
+
+    void decoder::readFloatValue()
+    {
+      // check length etc.
+      if (mLength == 8)
+      {
+        // read double
+        mOut.float64(internal::readDoublePrecisionBigEndian(mBuffer));
+      }
+      else
+      {
+        if (mLength == 4)
+        {
+          // read ieee765
+          mOut.float32(internal::readSinglePrecisionBigEndian(mBuffer));
+        }
+        else
+        {
+          assert(mLength == 2);
+          // read half precision
+          mOut.float16(internal::readHalfPrecisionBigEndian(mBuffer));
+        }
+      }
+      mCollected = 0;
+      mState = kSigma;
+      countItem();
     }
 
     bool decoder::addToBuffer(const uint8_t * mem, size_t len)
@@ -808,6 +933,7 @@ namespace satag
         mOut.bytes(mBuffer, mCollected, true);
         countItem();
       }
+      mCollected = 0;
     }
 
     void decoder::countItem()
@@ -881,6 +1007,16 @@ namespace satag
       std::cout << tab.c_str() << "int64: " << value << std::endl;
     }
 
+    void encoder::int64p(uint64_t value)
+    {
+      std::cout << tab.c_str() << "uint64: " << value << std::endl;
+    }
+
+    void satag::cbor::encoder::int64n(uint64_t value)
+    {
+      std::cout << tab.c_str() << "uint64: -" << value << std::endl;
+    }
+
     void encoder::string(const char * value, size_t len, bool complete)
     {
       std::string z;
@@ -891,6 +1027,11 @@ namespace satag
     void encoder::bytes(const uint8_t * mem, size_t len, bool complete)
     {
       std::cout << tab.c_str() << "bytes (" << len << ")" << std::endl;
+    }
+
+    void encoder::float16(float value)
+    {
+      std::cout << tab.c_str() << "half precision float: " << value << std::endl;
     }
 
     void encoder::float32(float value)
@@ -940,14 +1081,25 @@ namespace satag
 
     void encoder::map(uint64_t nums)
     {
+      if (nums == kIndefinite)
+      {
+        std::cout << tab.c_str() << "map with indefinite items " << std::endl;
+      }
+      else
+      {
+        std::cout << tab.c_str() << "map with " << nums << " items " << std::endl;
+      }
+      tab.push_back(' ');
     }
 
     void encoder::indefinitestring()
     {
+      std::cout << tab.c_str() << "begin indefinite string" << std::endl;
     }
 
     void encoder::indefinitebytes()
     {
+      std::cout << tab.c_str() << "begin indefinite bytes" << std::endl;
     }
 
     void encoder::breakend()

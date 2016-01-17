@@ -42,15 +42,35 @@ static satag::energy::bx::store gStore;
 int main(int argc, char *argv[], char *envp[])
 {
 
+#if 0
   {
+    // testing cbor decoder/encoder
+    uint8_t l[] = { 
+      // 0xf9,0x7e,0x00,                                     // infinity
+      0xd9,0xd9,0xf7,0x05,0x03,0x63,65,66,67,0x82,0x01,0x82,0x02,0x03,01,
+      0x65,0x54,0x65,0x73,0x74,0x73,
+      0x18,0x64,      // dez 100
+      0x1a,0x00,0x0f,0x42,0x40, // 1000000
+      0x1b,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xff, // 18446744073709551615
+      0x20,                                         // -1
+      0x29,                                         // -10
+      0xf9,0x7e,0x00,                               // 16 bit NaN
+      0xf9,0x7c,0x00,                               // 16 bit infinity
+      0xf4,                                         // false
+      0xf5,                                         // true
+      0xf6,                                         // null
+      0xa2,0x01,0x02,0x03,0x04,                     // map [1:2, 3:4]
+      0xf6,                                         // null
 
-    uint8_t l[] = { 0xd9,0xd9,0xf7,0x05,0x03,0x63,65,66,67,0x82,0x01,0x82,0x02,0x03,01 };
+    };
     satag::cbor::encoder e;
     satag::cbor::decoder z(e,8192);
     z.parse(l, sizeof(l));
+    std::cout << "parse result: " << (z.ok() ? "ok" : "failed") << std::endl;
   }
 
   return 0;
+#endif
 
   cout << "batterx communication starting..." << endl;
 

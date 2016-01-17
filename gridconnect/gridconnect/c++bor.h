@@ -27,7 +27,14 @@
 */
 
 
-/* note: unstable, untested code  */
+/* note: unstable, untested code
+
+  implementation status: decoder is working
+  todo: 
+    - simple type "time" decoder
+    - encoder (all of it)
+    
+*/
 
 #include <stdint.h>
 #include <cassert>
@@ -58,8 +65,11 @@ namespace satag
     public:
       virtual void int32(int32_t value) = 0;
       virtual void int64(int64_t value) = 0;
+      virtual void int64p(uint64_t value) = 0;
+      virtual void int64n(uint64_t value) = 0;
       virtual void string(const char* value, size_t len, bool complete) = 0;
       virtual void bytes(const uint8_t* mem, size_t len, bool complete) = 0;
+      virtual void float16(float value) = 0;
       virtual void float32(float value) = 0;
       virtual void float64(double value) = 0;
       virtual void boolean(bool value) = 0;
@@ -93,6 +103,7 @@ namespace satag
       kReadArray,
       kReadMap,
       kReadSimpleValue,
+      kReadFloatValue,
       kError,
     } state_t;
 
@@ -121,7 +132,7 @@ namespace satag
       ~decoder();
       void reset();
       bool parse(const uint8_t* mem, size_t bytesleft);
-      bool sigma() const { return mState == kSigma; }
+      bool ok() const { return mState == kSigma && mStack.empty(); }
       error getError() const { return mErrorcode; }
     private:
       state_t mState = kSigma;        // statemachine
@@ -129,7 +140,7 @@ namespace satag
       int mMajor = 0;                 // the current major code
       size_t mBytesLeft = 0;          // bytes left to read in the current streaming block
       uint64_t mLength = 0;           // length of an item
-      int64_t mValue = 0;
+      uint64_t mValue = 0;
       error mErrorcode = none;
       bool mIndefiniteString = false; // true, if chunks are being read for indefinite text string
       bool mIndefiniteBytes = false;  // true, if chunks are being read for indefinite byte string
@@ -148,6 +159,7 @@ namespace satag
       void readMap(int minor);
       void readTagItem(int minor);
       void readSimpleDataTypes(int minor);
+      void readFloatValue();
 
       bool addToBuffer(const uint8_t* mem, size_t len);
       void flushBuffer();
@@ -176,7 +188,7 @@ namespace satag
         assert(mBytesLeft >= 2);
         mBytesLeft -= 2;
         int v = (*mMem++) << 8;
-        v += *mMem++;
+        v |= *mMem++;
         return v;
       }
       // read 4 bytes big endian
@@ -184,25 +196,25 @@ namespace satag
       {
         assert(mBytesLeft >= 4);
         mBytesLeft -= 4;
-        int v = (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += *mMem++;
+        int v = (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
         return v;
       }
       // read 8 bytes big endian
-      inline int64_t take8() 
+      inline uint64_t take8()
       {
         assert(mBytesLeft >= 8);
         mBytesLeft -= 8;
-        int v = (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += (*mMem++) << 8;
-        v += *mMem++;
+        uint64_t v = (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
+        v = (v << 8) + (*mMem++);
         return v;
       }
     };
@@ -217,8 +229,11 @@ namespace satag
       //{}
       virtual void int32(int32_t value) override;
       virtual void int64(int64_t value)  override;
+      virtual void int64p(uint64_t value)  override;
+      virtual void int64n(uint64_t value)  override;
       virtual void string(const char* value, size_t len, bool complete)  override;
       virtual void bytes(const uint8_t* mem, size_t len, bool complete)  override;
+      virtual void float16(float value)  override;
       virtual void float32(float value)  override;
       virtual void float64(double value)  override;
       virtual void boolean(bool value)  override;
