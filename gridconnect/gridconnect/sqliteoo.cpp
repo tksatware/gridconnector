@@ -185,6 +185,11 @@ namespace satag
       return sqlite3_column_int(_q, _i);
     }
 
+    field::operator const int64_t() const
+    {
+      return sqlite3_column_int64(_q, _i);
+    }
+
     field::operator const char*() const
     {
       return (const char*)sqlite3_column_text(_q, _i);

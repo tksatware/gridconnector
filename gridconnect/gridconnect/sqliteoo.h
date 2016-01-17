@@ -123,6 +123,7 @@ namespace satag
         , _i(index)
       {}
       operator const int() const;
+      operator const int64_t() const;
       operator const char*() const;
       operator const double() const;
       operator const sqlite3_value*() const;

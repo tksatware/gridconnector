@@ -147,6 +147,7 @@
     <Text Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="c++bor.h" />
     <ClInclude Include="sqlite3.h" />
     <ClInclude Include="sqlite3ext.h" />
     <ClInclude Include="sqliteoo.h" />
@@ -154,6 +155,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="c++bor.cpp" />
     <ClCompile Include="gridconnect.cpp" />
     <ClCompile Include="sqlite3.c" />
     <ClCompile Include="sqliteoo.cpp" />

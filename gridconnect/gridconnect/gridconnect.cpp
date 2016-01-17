@@ -32,6 +32,7 @@ The license above does not apply to and no license is granted for any Military U
 #include <thread>
 #include <chrono>
 
+#include "c++bor.h"
 #include "storage.h"
 
 using namespace std;
@@ -40,6 +41,17 @@ static satag::energy::bx::store gStore;
 
 int main(int argc, char *argv[], char *envp[])
 {
+
+  {
+
+    uint8_t l[] = { 0xd9,0xd9,0xf7,0x05,0x03,0x63,65,66,67,0x82,0x01,0x82,0x02,0x03,01 };
+    satag::cbor::encoder e;
+    satag::cbor::decoder z(e,8192);
+    z.parse(l, sizeof(l));
+  }
+
+  return 0;
+
   cout << "batterx communication starting..." << endl;
 
   cout << "opening database...";

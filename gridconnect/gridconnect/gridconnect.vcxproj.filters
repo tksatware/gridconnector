@@ -39,6 +39,9 @@
     <ClInclude Include="storage.h">
       <Filter>battery</Filter>
     </ClInclude>
+    <ClInclude Include="c++bor.h">
+      <Filter>sqlite</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="gridconnect.cpp">
@@ -52,6 +55,9 @@
     </ClCompile>
     <ClCompile Include="storage.cpp">
       <Filter>battery</Filter>
+    </ClCompile>
+    <ClCompile Include="c++bor.cpp">
+      <Filter>sqlite</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
