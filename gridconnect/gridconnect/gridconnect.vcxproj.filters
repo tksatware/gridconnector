@@ -40,7 +40,7 @@
       <Filter>battery</Filter>
     </ClInclude>
     <ClInclude Include="c++bor.h">
-      <Filter>sqlite</Filter>
+      <Filter>battery</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -57,7 +57,7 @@
       <Filter>battery</Filter>
     </ClCompile>
     <ClCompile Include="c++bor.cpp">
-      <Filter>sqlite</Filter>
+      <Filter>battery</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -51,14 +51,20 @@ namespace satag
         void close();
         bool isOpen() const { return mDB.isOpen(); }
         bool logDSPEvent(int device, int entity, int value);
+        bool runEvent(std::function<bool(int device, const char* text1, const char* text2)> fun);
+        bool logEvent(int eventid,const char * source, int device,  const char* text1, const char* text2, bool success);
       protected:
         bool createSchema();
         bool createQueries();
+        time_t now() const; 
       private:
-        db mDB;                 // the database object
-        query mInsertToLog;     // the statement to log data to CollectedData
-        query mInsertToCurrent; // the statement to log data to CurrentState
-        mutex mLock;               // lock to use prepared statements from multiple threads
+        db mDB;                       // the database object
+        query mInsertToLog;           // the statement to log data to CollectedData
+        query mInsertToCurrent;       // the statement to log data to CurrentState
+        query mGetNetCommand;         // the statement to retrieve a command for the battery
+        query mDeleteControlCommand;  // removes a command from the ControlCommandsIn Table
+        query mInsertToEventLog;      // 
+        mutex mLock;                  // lock to use prepared statements from multiple threads
       };
     }
   }

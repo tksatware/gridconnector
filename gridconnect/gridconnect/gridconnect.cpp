@@ -41,7 +41,6 @@ static satag::energy::bx::store gStore;
 
 int main(int argc, char *argv[], char *envp[])
 {
-
 #if 0
   {
     // testing cbor decoder/encoder
@@ -94,6 +93,14 @@ int main(int argc, char *argv[], char *envp[])
     {
       cout << "starting database logger\n";
       gStore.logDSPEvent(1, 3, 7);
+      gStore.runEvent([&](int device, const char* text1, const char* text2)
+      {
+        // actual execution
+        cout << "executing '" << text1 << "/" << text2 << "' on device: " << device << endl;
+        // log the event if it worked
+        gStore.logEvent(100, "NetIn", device, text1, text2, true);
+        return true;  // return true if execution took place to remove the command from the command queue
+      });
 
     }));
 

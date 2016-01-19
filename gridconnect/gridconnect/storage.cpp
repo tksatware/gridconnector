@@ -57,6 +57,23 @@ namespace satag
         "  );"
         // -------- CurrentData has an index that comprises of the device/entity pair
         "CREATE UNIQUE INDEX `currentStateIndex` ON `CurrentState` (`device` ,`entity` );"
+        // -------- ControlCommandsIn contains commands for the battery
+        "CREATE TABLE IF NOT EXISTS ControlCommandsIn ("
+        "`id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
+        "`device` INTEGER NOT NULL,"
+        "`text1` TEXT,"
+        "`text2` TEXT,"
+        "`exectime` INTEGER NOT NULL);"
+        // -------- Eventlog contains logevents from the battery
+        "CREATE TABLE `Eventlog` ("
+        "`id`	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,"
+        "`eventid`	INTEGER NOT NULL,"
+        "`source`	TEXT NOT NULL,"
+        "`text1`	TEXT,"
+        "`text2`	TEXT,"
+        "`logtime`	INTEGER,"
+        "`uploaded` INTEGER"
+        " );"
         ;
 
       store::store()
@@ -77,8 +94,7 @@ namespace satag
         {
           mDB.execute("PRAGMA synchronous=FULL;");
           int version = 0;
-          query q(mDB, "pragma user_version;");
-          if (q.run([&](query& row)
+          if (query(mDB, "pragma user_version;").run([&](query& row)
           {
             version = row[0];
           }))
@@ -118,10 +134,8 @@ namespace satag
       */
       bool store::logDSPEvent(int device, int entity, int value)
       {
-        mLock.lock();
+        std::lock_guard<std::mutex> lock(mLock);
         bool result = true;
-        auto now = chrono::system_clock::now();
-        time_t n = chrono::system_clock::to_time_t(now);
 
         result = mDB.begin(); // begin transaction
         if (result)
@@ -129,7 +143,7 @@ namespace satag
           mInsertToLog.bind(1) = device;
           mInsertToLog.bind(2) = entity;
           mInsertToLog.bind(3) = value;
-          mInsertToLog.bind(4) = n;
+          mInsertToLog.bind(4) = now();
           result &= mInsertToLog.run();
         }
         if (result)
@@ -137,7 +151,7 @@ namespace satag
           mInsertToCurrent.bind(1) = device;
           mInsertToCurrent.bind(2) = entity;
           mInsertToCurrent.bind(3) = value;
-          mInsertToCurrent.bind(4) = n;
+          mInsertToCurrent.bind(4) = now();
           result &= mInsertToCurrent.run();
         }
         if (!result)
@@ -153,8 +167,57 @@ namespace satag
           mDB.rollback();
           // TODO: log an error about the impossibility to write data
         }
-        mLock.unlock();
         return result;
+      }
+
+      bool store::runEvent(std::function<bool(int device, const char*text1, const char*text2)> fun)
+      {
+        bool result = false;
+        mGetNetCommand.run([&](query &row)
+        {
+          result = fun(row[1], row[2], row[3]);
+          if (result)
+          {
+            mDeleteControlCommand.bind(1) = row[0];
+            mDeleteControlCommand.run();
+          }
+        }
+        );
+        return result;
+      }
+
+      bool store::logEvent(int eventid, const char * source, int device, const char * text1, const char * text2, bool success)
+      {
+        std::lock_guard<std::mutex> lock(mLock);
+        
+        bool result = true;
+
+        result = mDB.begin(); // begin transaction
+        if (result)
+        {
+          mInsertToEventLog.bind(1) = device;
+          mInsertToEventLog.bind(2) = source;
+          mInsertToEventLog.bind(3) = text1;
+          mInsertToEventLog.bind(4) = text2;
+          mInsertToEventLog.bind(5) = now();
+          result &= mInsertToEventLog.run();
+        }
+        if (!result)
+        {
+          mDB.getErrorMessage();
+        }
+        if (result)
+        {
+          mDB.commit();
+        }
+        else
+        {
+          mDB.rollback();
+          // TODO: log an error about the impossibility to write data
+        }
+ 
+        return result;
+
       }
 
       /*
@@ -193,7 +256,29 @@ namespace satag
             "values (?1,?2,?3,?4);"
             );
         }
+        if (result)
+        {
+          result = mGetNetCommand.prepare(mDB,
+            "select id,device,text1,text2 from ControlCommandsIn order by exectime asc limit 0,1");
+        }
+        if (result)
+        {
+          result = mDeleteControlCommand.prepare(mDB,
+            "delete from ControlCommandsIn where id=?1");
+        }
+        if (result)
+        {
+          result = mInsertToEventLog.prepare(mDB,
+            "insert into Eventlog (eventid,source,text1,text2,logtime,uploaded) values "
+            "(?1,?2,?3,?4,?5,0);");
+        }
         return result;
+      }
+      time_t store::now() const
+      {
+        auto now = chrono::system_clock::now();
+        time_t n = chrono::system_clock::to_time_t(now);
+        return n;
       }
     }
   }

@@ -150,6 +150,7 @@ namespace satag
       void operator=(const char* s) { sqlite3_bind_text(_q, _i, s, -1, SQLITE_TRANSIENT); }
       void operator=(const std::string &s) { sqlite3_bind_text(_q, _i, s.c_str(), -1, SQLITE_TRANSIENT); }
       void operator=(const sqlite3_value* val) { sqlite3_bind_value(_q, _i, val); }
+      void operator=(const field &f) { sqlite3_bind_value(_q, _i, f); }
     protected:
       query& _q;
       size_t _i;

@@ -117,22 +117,22 @@ namespace satag
       {
         do {
           r = sqlite3_step(mStatement);
-          if (r == SQLITE_ROW)
+          if (SQLITE_ROW == r)
           {
             fun(*this);
           }
           else
           {
-            result = (r == SQLITE_DONE);
+            result = (SQLITE_DONE == r);
           }
-        } while (r == SQLITE_ROW);
+        } while (SQLITE_ROW == r);
       }
       else
       {
         do {
           r = sqlite3_step(mStatement);
-          result = (r == SQLITE_DONE);
-        } while (r == SQLITE_ROW);
+          result = (SQLITE_DONE == r);
+        } while (SQLITE_ROW == r);
       }
       reset();
       return result;
@@ -156,13 +156,13 @@ namespace satag
     {
       bool result = (SQLITE_OK == sqlite3_finalize(mStatement));
       mStatement = nullptr;
-      return (result = SQLITE_OK);
+      return (SQLITE_OK == result);
     }
 
     bool db::execute(const char * sql)
     {
       int result = sqlite3_exec(mDB, sql, nullptr, nullptr, nullptr);
-      return (result == SQLITE_OK);
+      return (SQLITE_OK == result);
     }
 
     bool db::begin()
