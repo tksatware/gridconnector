@@ -224,10 +224,10 @@ namespace satag
     {
       typedef listener super;
     public:
-      //encoder(std::function<void(const uint8_t* mem, size_t len)> fun)
-      //  : super()
-      //  , mOut(fun)
-      //{}
+      encoder(std::function<void(const uint8_t* mem, size_t len)> fun)
+        : super()
+        , mOut(fun)
+      {}
       virtual void int32(int32_t value) override;
       virtual void int64(int64_t value)  override;
       virtual void int64p(uint64_t value)  override;
