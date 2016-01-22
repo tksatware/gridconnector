@@ -74,6 +74,22 @@ namespace satag
         "`logtime`	INTEGER,"
         "`uploaded` INTEGER"
         " );"
+        // -------- CurrentState (NetOut) stores states, outputs, responses from the battery
+        "CREATE TABLE IF NOT EXISTS ControlStateOut ("
+        "`device` INTEGER NOT NULL,"
+        "`entity` INTEGER NOT NULL,"
+        "`text1` TEXT,"
+        "`text2` TEXT,"
+        "`logtime` INTEGER NOT NULL,"
+        "`uploaded` INTEGER NOT NULL);"
+        // -------- CurrentState has an index that comprises of the device/entity pair
+        "CREATE UNIQUE INDEX `ControlStateOutIndex` ON `ControlStateOut` (`device` ,`entity` );"
+        // -------- Settings per device
+        "CREATE TABLE `Settings` ("
+        "`device` INTEGER NOT NULL,"
+        "`entity` INTEGER NOT NULL,"
+        "`entityvalue` INTEGER NOT NULL);"
+        "CREATE UNIQUE INDEX `SettingsIndex` ON `Settings` (`device`, `entity`);"
         ;
 
       store::store()
@@ -220,6 +236,36 @@ namespace satag
 
       }
 
+      bool store::logState(int device, int entity, const char * text1, const char * text2)
+      {
+        mInsertToStateLog.bind(1) = device;
+        mInsertToStateLog.bind(2) = entity;
+        mInsertToStateLog.bind(3) = text1;
+        mInsertToStateLog.bind(4) = text2;
+        mInsertToStateLog.bind(5) = now();
+        return mInsertToStateLog.run();
+      }
+
+      bool store::setSetting(int device, int entity, int value)
+      {
+        mSetSetting.bind(1) = device;
+        mSetSetting.bind(2) = entity;
+        mSetSetting.bind(3) = value;
+        return mSetSetting.run();
+      }
+
+      int store::getSetting(int device, int entity)
+      {
+        int result = 0;
+        mGetSetting.bind(1) = device;
+        mGetSetting.bind(2) = entity;
+        mGetSetting.run([&](query& row)
+        {
+          result = row[0];
+        });
+        return result;
+      }
+
       /*
       creates the database schema and sets the pragma user version
       */
@@ -271,6 +317,22 @@ namespace satag
           result = mInsertToEventLog.prepare(mDB,
             "insert into Eventlog (eventid,source,text1,text2,logtime,uploaded) values "
             "(?1,?2,?3,?4,?5,0);");
+        }
+        if (result)
+        {
+          result = mInsertToStateLog.prepare(mDB,
+            "insert into ControlStateOut (device,entity,text1,text2,logtime,uploaded) values "
+            "(?1,?2,?3,?4,?5,0);");
+        }
+        if (result)
+        {
+          result = mSetSetting.prepare(mDB,
+            "update Settings set entityvalue=?3 where device=?1 and entity=?2;");
+        }
+        if (result)
+        {
+          result = mGetSetting.prepare(mDB,
+            "select entityvalue from Settings where device=?1 and entity=?2 limit 0,1;");
         }
         return result;
       }

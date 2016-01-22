@@ -29,6 +29,7 @@ The license above does not apply to and no license is granted for any Military U
 #include <conio.h>    // just for _getch(), remove it later
 #include <iostream>
 #include <algorithm>
+#include <iterator>
 #include <thread>
 #include <chrono>
 
@@ -62,7 +63,14 @@ int main(int argc, char *argv[], char *envp[])
       0xf6,                                         // null
 
     };
-    satag::cbor::encoder e;
+    std::vector<uint8_t> out;
+    out.reserve(32768);
+    satag::cbor::encoder e(
+      [&](const uint8_t* mem, size_t len) 
+    {
+      out.insert(out.end(), &mem[0], &mem[len]);
+    });
+    
     satag::cbor::decoder z(e,8192);
     z.parse(l, sizeof(l));
     std::cout << "parse result: " << (z.ok() ? "ok" : "failed") << std::endl;

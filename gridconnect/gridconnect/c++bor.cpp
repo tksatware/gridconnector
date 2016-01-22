@@ -180,12 +180,12 @@ namespace satag
                   if (mValue > 0x7fffffffffffffff)
                   {
 
-                    mOut.int64n(mValue+1);
+                    mOut.int64n(mValue + 1);
                   }
                   else
                   {
                     int64_t val = mValue;
-                    val = -(val+1);
+                    val = -(val + 1);
                     mOut.int64(val);
                   }
                 }
@@ -201,10 +201,12 @@ namespace satag
               case 2:
                 mLength = mValue;
                 mState = kReadString;
+                mOut.stringahead(mLength);
                 break;
               case 3:
                 mLength = mValue;
                 mState = kReadBinary;
+                mOut.bytesahead(mLength);
                 break;
               case 4:
                 {
@@ -266,7 +268,7 @@ namespace satag
             {
               if (available(mLength) && (mCollected == 0))
               {
-                mOut.string((const char*)mMem, (size_t) mLength, true);
+                mOut.string((const char*)mMem, (size_t)mLength, true);
                 countItem();
               }
               else
@@ -280,14 +282,14 @@ namespace satag
             else
             {
               if (mIndefiniteString)
-              { 
+              {
                 raiseError(nestedindefstring);
               }
               else
               {
                 // from now on, we will expect chunks of length definite strings
                 mIndefiniteString = true;
-                mOut.indefinitestring();
+                mOut.stringahead(kIndefinite);
                 mStack.push_back(stackitem(kReadString, kIndefinite));
               }
             }
@@ -318,7 +320,7 @@ namespace satag
               {
                 // from now on, we will expect chunks of length definite strings
                 mIndefiniteBytes = true;
-                mOut.indefinitebytes();
+                mOut.bytesahead(kIndefinite);
                 mStack.push_back(stackitem(kReadBinary, kIndefinite));
               }
             }
@@ -382,7 +384,7 @@ namespace satag
         if (len < 24)
         {
           // len is immediate value (see 
-          mOut.int32((mMajor == 0) ? len : (-(len+1)));
+          mOut.int32((mMajor == 0) ? len : (-(len + 1)));
           countItem();
           // state stays kSigma
         }
@@ -399,7 +401,7 @@ namespace satag
                 if (available(1))
                 {
                   int value = take1();
-                  mOut.int32(mMajor == 0 ? value : -(value+1));
+                  mOut.int32(mMajor == 0 ? value : -(value + 1));
                   countItem();
                 }
                 else
@@ -541,12 +543,12 @@ namespace satag
             if (mMajor == 2)
             {
               mState = kReadBinary;
-              mOut.indefinitebytes();
+              mOut.bytesahead(kIndefinite);
             }
             else  // must be 3!
             {
               mState = kReadString;
-              mOut.indefinitestring();
+              mOut.stringahead(kIndefinite);
             }
             mStack.push_back(stackitem(kReadArray, kIndefinite));
             // stack gets popped when a break (0xff) comes in
@@ -562,7 +564,7 @@ namespace satag
         {
           if (mMajor == 2)
           {
-            mOut.bytes(mMem, (size_t) mLength, !mIndefiniteBytes);
+            mOut.bytes(mMem, (size_t)mLength, !mIndefiniteBytes);
           }
           else
           {
@@ -765,8 +767,8 @@ namespace satag
           mOut.null();
           countItem();
           break;
-        //case 23:
-        //  break;
+          //case 23:
+          //  break;
         case 24:
           // simple value in next byte (see 2.3 and table 2)
           mState = kReadSimpleValue;
@@ -921,7 +923,7 @@ namespace satag
     {
       if (mState == kReadString)
       {
-        mOut.string((const char*) mBuffer, mCollected, true);
+        mOut.string((const char*)mBuffer, mCollected, true);
         countItem();
       }
       if (mState == kReadBinary)
@@ -995,112 +997,293 @@ namespace satag
 
     void encoder::int32(int32_t value)
     {
-      std::cout << tab.c_str() << "int: " << value << std::endl;
+      uint8_t mem[10];
+      size_t len;
+      int major = (value < 0) ? 0x20 : 0x00;
+      if (value < 0)
+      {
+        value = -(value - 1);
+      }
+      if (value < 24)
+      {
+        mem[0] = major | value;
+        len = 1;
+      }
+      else
+      {
+        if (value < 0x100)
+        {
+          // 1 byte
+          mem[0] = major | 24;    // 1 byte follows
+          mem[1] = value & 0xff;
+          len = 2;
+        }
+        else
+        {
+          if (value < 0x10000)
+          {
+            mem[0] = major | 25;  // 2 byte follows
+            write2(mem + 1, value);
+            len = 3;
+          }
+          else
+          {
+            mem[0] = major | 26; // 4 byte follows
+            write4(mem + 1, value);
+            len = 5;
+          }
+        }
+      }
+      mOut(mem, len);
     }
 
     void encoder::int64(int64_t value)
     {
-      std::cout << tab.c_str() << "int64: " << value << std::endl;
+      uint8_t mem[10];
+      size_t len;
+
+      uint8_t major = (value < 0) ? 0x20 : 0x00;
+      if (value < 0)
+      {
+        value = -(value - 1);
+      }
+      if (value < 24)
+      {
+        mem[0] = major | (uint8_t)value;
+        len = 1;
+      }
+      else
+      {
+        if (value < 0x100)
+        {
+          // 1 byte
+          mem[0] = major | 24;    // 1 byte follows
+          mem[1] = value & 0xff;
+          len = 2;
+        }
+        else
+        {
+          if (value < 0x10000)
+          {
+            mem[0] = major | 25;  // 2 byte follows
+            write2(mem + 1, (uint16_t)value);
+            len = 3;
+          }
+          else
+          {
+            if (value < 0x100000000)
+            {
+              mem[0] = major | 26; // 4 byte follows
+              write4(mem + 1, (uint32_t)value);
+              len = 5;
+            }
+            else
+            {
+              mem[0] = major | 27; // 8 byte follows
+              write8(mem + 1, (uint64_t)value);
+              len = 9;
+            }
+          }
+        }
+      }
+      mOut(mem, len);
     }
 
     void encoder::int64p(uint64_t value)
     {
-      std::cout << tab.c_str() << "uint64: " << value << std::endl;
+      uint8_t mem[10];
+      mem[0] = 0x1b;  // major 0/minor 27
+      write8(mem + 1, value);
+      mOut(mem, 9);
     }
 
     void satag::cbor::encoder::int64n(uint64_t value)
     {
-      std::cout << tab.c_str() << "uint64: -" << value << std::endl;
+      uint8_t mem[10];
+      mem[0] = 0x20 | 27; // 001 11011
+      write8(mem + 1, value);
+      mOut(mem, 9);
     }
 
     void encoder::string(const char * value, size_t len, bool complete)
     {
-      std::string z;
-      z.insert(0,value, len);      
-      std::cout << tab.c_str() << "string: " << z.c_str() << std::endl;
+      if (mDefiniteStringAnnounced)
+      {
+        // already had an announcement, just write the data
+        mOut((const uint8_t*)value, len);
+        if (complete)
+        {
+          // if it is complete, there shouldn't be more strings
+          mDefiniteStringAnnounced = false;
+        }
+      }
+      else
+      {
+        assert(complete); // either announce a length OR immediately call it with complete
+        if (complete)
+        {
+          uint8_t mem[10];
+          size_t b = writeMajor(mem, 3, len);
+          mOut(mem, b);
+          // write the data
+          mOut((const uint8_t*)value, len);
+        }
+        else
+        {
+          // actually, this is an error, either this is being announced or complete
+        }
+      }
     }
 
     void encoder::bytes(const uint8_t * mem, size_t len, bool complete)
     {
-      std::cout << tab.c_str() << "bytes (" << len << ")" << std::endl;
+      if (mDefiniteBytesAnnounced)
+      {
+        // already had an announcement, just write the data
+        mOut(mem, len);
+        if (complete)
+        {
+          // if it is complete, there shouldn't be more strings
+          mDefiniteBytesAnnounced = false;
+        }
+      }
+      else
+      {
+        assert(complete); // either announce a length OR immediately call it with complete
+        if (complete)
+        {
+          uint8_t m[10];
+          size_t b = writeMajor(m, 3, len);
+          mOut(m, b);
+          // write the data
+          mOut(mem, len);
+        }
+        else
+        {
+          // actually, this is an error, either this is being announced or complete
+        }
+      }
     }
 
     void encoder::float16(float value)
     {
-      std::cout << tab.c_str() << "half precision float: " << value << std::endl;
+      // actually, this is not nice, but right now, I haven't written an encoder for ieee754 half precision
+      float32(value);
     }
 
     void encoder::float32(float value)
     {
-      std::cout << tab.c_str() << "float: " << value << std::endl;
+      uint32_t p;
+      *(float*)(&p) = value;
+      uint8_t mem[5];
+      mem[0] = 0xfa;
+      mem[1] = (p >> 24) & 0xff;
+      mem[2] = (p >> 16) & 0xff;
+      mem[3] = (p >> 8) & 0xff;
+      mem[4] = (p ) & 0xff;
+      mOut(mem, 5);
     }
 
     void encoder::float64(double value)
     {
-      std::cout << tab.c_str() << "double: " << value << std::endl;
+      uint64_t p;
+      *(double*)(&p) = value;
+      uint8_t mem[9];
+      mem[0] = 0xfa;
+      mem[1] = (p >> 56) & 0xff;
+      mem[2] = (p >> 48) & 0xff;
+      mem[3] = (p >> 40) & 0xff;
+      mem[4] = (p >> 32) & 0xff;
+      mem[5] = (p >> 24) & 0xff;
+      mem[6] = (p >> 16) & 0xff;
+      mem[7] = (p >> 8) & 0xff;
+      mem[8] = (p & 0xff);
+      mOut(mem, 9);
     }
 
     void encoder::boolean(bool value)
     {
-      std::cout << tab.c_str() << "bool: " << value << std::endl;
+      static uint8_t f = 0xf4;
+      static uint8_t t = 0xf5;
+      mOut(value ? &t : &f, 1);
     }
 
     void encoder::null()
     {
-      std::cout << tab.c_str() << "null" << std::endl;
+      static uint8_t n = 0xfe;
+      mOut(&n, 1);
     }
 
     void encoder::tag(uint64_t tag)
     {
       if (tag == 55799) // byte representation: 0xd9d9f7
       {
-        std::cout << tab.c_str() << "This is a CBOR item" << std::endl;
+        // std::cout << tab.c_str() << "This is a CBOR item" << std::endl;
       }
-      else
-      {
-        std::cout << tab.c_str() << "tag: " << tag << std::endl;
-      }
+      uint8_t mem[10];
+      auto len = writeMajor(mem, 6, tag);
+      mOut(mem, len);
     }
 
     void encoder::array(uint64_t nums)
     {
-      if (nums == kIndefinite)
-      {
-        std::cout << tab.c_str() << "array with indefinite items " << std::endl;
-      }
-      else
-      {
-        std::cout << tab.c_str() << "array with "<< nums << " items " << std::endl;
-      }
-      tab.push_back(' ');
+      uint8_t mem[10];
+      auto len = writeMajor(mem, 4, nums);
+      mOut(mem, len);
     }
 
     void encoder::map(uint64_t nums)
     {
-      if (nums == kIndefinite)
+      uint8_t mem[10];
+      auto len = writeMajor(mem, 4, nums);
+      mOut(mem, len);
+    }
+
+    void encoder::stringahead(uint64_t len)
+    {
+      uint8_t mem[10];
+      if (len == kIndefinite)
       {
-        std::cout << tab.c_str() << "map with indefinite items " << std::endl;
+        // begin indefinite
+        mInDefiniteString = true;
+        mem[0] = 0x6f;
+        mOut(mem, 1);
       }
       else
       {
-        std::cout << tab.c_str() << "map with " << nums << " items " << std::endl;
+        // encode string plus len
+        mDefiniteStringAnnounced = true;
+        auto l = writeMajor(mem, 3, len);
+        mOut(mem, l);
       }
-      tab.push_back(' ');
     }
 
-    void encoder::indefinitestring()
+    void encoder::bytesahead(uint64_t len)
     {
-      std::cout << tab.c_str() << "begin indefinite string" << std::endl;
-    }
-
-    void encoder::indefinitebytes()
-    {
-      std::cout << tab.c_str() << "begin indefinite bytes" << std::endl;
+      uint8_t mem[10];
+      if (len == kIndefinite)
+      {
+        // begin indefinite
+        mInDefiniteBytes = true;
+        mem[0] = 0x4f;
+        mOut(mem, 1);
+      }
+      else
+      {
+        // encode string plus len
+        mDefiniteBytesAnnounced = true;
+        auto l = writeMajor(mem, 2, len);
+        mOut(mem, l);
+      }
     }
 
     void encoder::breakend()
     {
-      tab.pop_back();
+      static uint8_t mem[] = { 0xFF };
+      mOut(mem, 1);
+      // clear those flags, even if it is an array or a map
+      mInDefiniteBytes = false;
+      mInDefiniteString = false;
     }
 
     void encoder::time(const char * value)
@@ -1111,5 +1294,51 @@ namespace satag
     {
     }
 
-}
+    size_t encoder::writeMajor(uint8_t* mem, uint8_t major, uint64_t length)
+    {
+      major <<= 5;
+      if (length == kIndefinite)
+      {
+        mem[0] = major | 0xF;
+        return 1;
+      }
+      if (length < 24)
+      {
+        mem[0] = major | (length & 0xFF);
+        return 1;
+      }
+      if (length < 0x100)
+      {
+        // 1 byte
+        mem[0] = major | 24;
+        mem[1] = length & 0xff;
+        return 2;
+      }
+      else
+      {
+        if (length < 0x10000)
+        {
+          // 2 byte
+          mem[0] = major | 25;
+          write2(mem + 1, (uint16_t)length);
+          return 3;
+        }
+        else
+        {
+          if (length < 0x100000000)
+          {
+            mem[0] = major | 26;
+            write4(mem + 1, (uint32_t)length);
+            return 5;
+          }
+          else
+          {
+            mem[0] = major | 27;
+            write8(mem + 1, length);
+            return 9;
+          }
+        }
+      }
+    }
+  }
 }

@@ -78,8 +78,8 @@ namespace satag
       virtual void tag(uint64_t tag) = 0;
       virtual void array(uint64_t nums) = 0;
       virtual void map(uint64_t nums) = 0;
-      virtual void indefinitestring() = 0;
-      virtual void indefinitebytes() = 0;
+      virtual void stringahead(uint64_t len) = 0;
+      virtual void bytesahead(uint64_t len) = 0;
       virtual void breakend() {}
       virtual void time(const char* value) = 0;
       virtual void time(int64_t value) = 0;
@@ -242,14 +242,44 @@ namespace satag
       virtual void tag(uint64_t tag) override;
       virtual void array(uint64_t nums) override;
       virtual void map(uint64_t nums) override;
-      virtual void indefinitestring() override;
-      virtual void indefinitebytes() override;
+      virtual void stringahead(uint64_t len) override;
+      virtual void bytesahead(uint64_t len) override;
       virtual void breakend()  override;
       virtual void time(const char* value) override;
       virtual void time(int64_t value) override;
     private:
+      bool mInDefiniteString = false;
+      bool mInDefiniteBytes = false;
+      bool mDefiniteStringAnnounced = false;
+      bool mDefiniteBytesAnnounced = false;
       std::function<void(const uint8_t* mem, size_t len)> mOut;
-      std::string tab;
+      // write major code with length
+      size_t writeMajor(uint8_t* mem, uint8_t major, uint64_t length);
+      // write 16 bit big endian
+      inline void write2(uint8_t* mem, uint16_t value)
+      {
+        mem[0] = (value >> 8);
+        mem[1] = (value & 0xff);
+      }
+      // write 32 bit big endian
+      inline void write4(uint8_t* mem, uint32_t value)
+      {
+        mem[0] = (value >> 24) & 0xff;
+        mem[1] = (value >> 16) & 0xff;
+        mem[2] = (value >> 8) & 0xff;
+        mem[3] = (value & 0xff);
+      }
+      inline void write8(uint8_t* mem, uint64_t value)
+      {
+        mem[0] = (value >> 56) & 0xff;
+        mem[1] = (value >> 48) & 0xff;
+        mem[2] = (value >> 40) & 0xff;
+        mem[3] = (value >> 32) & 0xff;
+        mem[4] = (value >> 24) & 0xff;
+        mem[5] = (value >> 16) & 0xff;
+        mem[6] = (value >> 8) & 0xff;
+        mem[7] = (value & 0xff);
+      }
     };
 
   }

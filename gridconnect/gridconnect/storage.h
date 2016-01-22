@@ -53,6 +53,9 @@ namespace satag
         bool logDSPEvent(int device, int entity, int value);
         bool runEvent(std::function<bool(int device, const char* text1, const char* text2)> fun);
         bool logEvent(int eventid,const char * source, int device,  const char* text1, const char* text2, bool success);
+        bool logState(int eventid, int device, const char* text1, const char* text2);
+        bool setSetting(int device, int entity, int value);
+        int getSetting(int device, int entity);
       protected:
         bool createSchema();
         bool createQueries();
@@ -63,7 +66,10 @@ namespace satag
         query mInsertToCurrent;       // the statement to log data to CurrentState
         query mGetNetCommand;         // the statement to retrieve a command for the battery
         query mDeleteControlCommand;  // removes a command from the ControlCommandsIn Table
-        query mInsertToEventLog;      // 
+        query mInsertToEventLog;      // the statement to insert into the event log
+        query mInsertToStateLog;      // the statement to insert into the state log
+        query mSetSetting;            // the statement to save a setting
+        query mGetSetting;            // the statement to retrieve a setting
         mutex mLock;                  // lock to use prepared statements from multiple threads
       };
     }

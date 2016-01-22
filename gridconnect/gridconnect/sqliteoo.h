@@ -111,6 +111,22 @@ namespace satag
       int mLastResult = SQLITE_OK;
     };
 
+    class blob
+    {
+    public:
+      blob() {};
+      blob(const void* ptr, size_t size)
+        : _ptr(ptr)
+        , _size(size)
+      {}
+      operator const void*() const { return _ptr; }
+      operator const uint8_t*() const { return (const uint8_t*)_ptr; }
+      size_t size() const { return _size; }
+    private:
+      const void* _ptr = nullptr;
+      size_t _size = 0;
+    };
+
     /*
       class field provides binding to a value so we can use the [] operator on the
       query class and use a suitable auto type conversion from the field value
@@ -128,6 +144,7 @@ namespace satag
       operator const double() const;
       operator const sqlite3_value*() const;
       int Type() const { return sqlite3_column_type(_q, _i); }
+      operator const blob() const;
     protected:
       query& _q;
       size_t _i;
@@ -147,10 +164,11 @@ namespace satag
       {}
       void operator=(const int i) { sqlite3_bind_int(_q, _i, i); }
       void operator=(const int64_t i) { sqlite3_bind_int64(_q, _i, i); }
-      void operator=(const char* s) { sqlite3_bind_text(_q, _i, s, -1, SQLITE_TRANSIENT); }
-      void operator=(const std::string &s) { sqlite3_bind_text(_q, _i, s.c_str(), -1, SQLITE_TRANSIENT); }
+      void operator=(const char* s) { sqlite3_bind_text(_q, _i, s, -1, SQLITE_STATIC); }
+      void operator=(const std::string &s) { sqlite3_bind_text(_q, _i, s.c_str(), -1, SQLITE_STATIC); }
       void operator=(const sqlite3_value* val) { sqlite3_bind_value(_q, _i, val); }
       void operator=(const field &f) { sqlite3_bind_value(_q, _i, f); }
+      void operator=(const blob &b) { sqlite3_bind_blob(_q, _i, b, b.size(), SQLITE_STATIC); }
     protected:
       query& _q;
       size_t _i;

@@ -205,6 +205,11 @@ namespace satag
       return sqlite3_column_value(_q, _i);
     }
 
+    field::operator const blob() const
+    {
+      return blob(sqlite3_column_blob(_q, _i), sqlite3_column_bytes(_q, _i));
+    }
+
 
   }
 }
