@@ -36,12 +36,68 @@ The license above does not apply to and no license is granted for any Military U
 #include "c++bor.h"
 #include "storage.h"
 
+#include "curl/curl.h"
+
+#if WIN32
+// link the library
+#pragma comment(lib, "libcurl.lib")
+#endif
+
 using namespace std;
 
 static satag::energy::bx::store gStore;
 
+#if 0
+// this is for the curl check
+uint8_t blob[65536];
+size_t bloblen = 0;
+
+size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) 
+{  
+  size_t len = nmemb*size;
+  if (bloblen + len < sizeof(blob))
+  {
+    memcpy(blob + bloblen, ptr, len);
+    bloblen += len;
+  }
+  else
+  {
+    len = 0;
+  }
+  return len;
+}
+#endif
+
 int main(int argc, char *argv[], char *envp[])
 {
+#if 0
+  CURL *curl;
+  CURLcode res;
+
+  curl_global_init(CURL_GLOBAL_DEFAULT);
+
+  curl = curl_easy_init();
+
+  if (curl)
+  {
+    curl_easy_setopt(curl, CURLOPT_URL, "https://www.satware.com/");
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 2L);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    // curl_easy_setopt(curl, CURLOPT_CAINFO, "certs");
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
+
+    res = curl_easy_perform(curl);
+    if (res != CURLE_OK)
+    {
+      fprintf(stderr, "curl_easy_perform() failed: %s\n",
+        curl_easy_strerror(res));
+    }
+
+    curl_easy_cleanup(curl);
+  }
+  curl_global_cleanup();
+#endif
 #if 0
   {
     // testing cbor decoder/encoder

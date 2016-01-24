@@ -80,7 +80,7 @@ namespace satag
       virtual void map(uint64_t nums) = 0;
       virtual void stringahead(uint64_t len) = 0;
       virtual void bytesahead(uint64_t len) = 0;
-      virtual void breakend() {}
+      virtual void breakend(bool wasIndefinite) {}
       virtual void time(const char* value) = 0;
       virtual void time(int64_t value) = 0;
       virtual void onerror(error _err) {}
@@ -244,7 +244,7 @@ namespace satag
       virtual void map(uint64_t nums) override;
       virtual void stringahead(uint64_t len) override;
       virtual void bytesahead(uint64_t len) override;
-      virtual void breakend()  override;
+      virtual void breakend(bool wasIndefinite)  override;
       virtual void time(const char* value) override;
       virtual void time(int64_t value) override;
     private:

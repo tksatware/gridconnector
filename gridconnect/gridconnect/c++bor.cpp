@@ -216,7 +216,7 @@ namespace satag
                   {
                     // notify client about an empty array and return to start
                     mOut.array(0);
-                    mOut.breakend();
+                    mOut.breakend(false);
                     countItem();
                   }
                   else
@@ -237,7 +237,7 @@ namespace satag
                   {
                     // notify client about an empty array and return to start
                     mOut.map(0);
-                    mOut.breakend();
+                    mOut.breakend(false);
                     countItem();
                   }
                   else
@@ -590,7 +590,7 @@ namespace satag
         mOut.array(minor);
         if (minor == 0)
         {
-          mOut.breakend();
+          mOut.breakend(false);
           countItem();
         }
         else
@@ -634,7 +634,7 @@ namespace satag
         mOut.map(minor);
         if (minor == 0)
         {
-          mOut.breakend();
+          mOut.breakend(false);
           countItem();
         }
         else
@@ -803,14 +803,14 @@ namespace satag
               case kReadBinary:
                 assert(mIndefiniteString || mIndefiniteBytes);
                 flushBuffer();
-                mOut.breakend();
+                mOut.breakend(true);
                 countItem();
                 mIndefiniteString = false;
                 mIndefiniteBytes = false;
                 mState = kSigma;
                 break;
               case kReadArray:
-                mOut.breakend();
+                mOut.breakend(true);
                 countItem();
                 mState = kSigma;
                 break;
@@ -821,7 +821,7 @@ namespace satag
                 }
                 else
                 {
-                  mOut.breakend();
+                  mOut.breakend(true);
                   countItem();
                   mState = kSigma;
                 }
@@ -949,7 +949,7 @@ namespace satag
               if (o.numItems == 0)
               {
                 // issue break, pop back
-                mOut.breakend();
+                mOut.breakend(false);
                 mStack.pop_back();
                 countItem();
                 mState = kSigma;
@@ -971,7 +971,7 @@ namespace satag
                 if (o.numItems == 0)
                 {
                   // issue break, pop back
-                  mOut.breakend();
+                  mOut.breakend(false);
                   mStack.pop_back();
                   countItem();
                   mState = kSigma;
@@ -1002,7 +1002,7 @@ namespace satag
       int major = (value < 0) ? 0x20 : 0x00;
       if (value < 0)
       {
-        value = -(value - 1);
+        value = -(value + 1);
       }
       if (value < 24)
       {
@@ -1210,7 +1210,7 @@ namespace satag
 
     void encoder::null()
     {
-      static uint8_t n = 0xfe;
+      static uint8_t n = 0xf6;
       mOut(&n, 1);
     }
 
@@ -1277,13 +1277,16 @@ namespace satag
       }
     }
 
-    void encoder::breakend()
+    void encoder::breakend(bool wasIndefinite)
     {
       static uint8_t mem[] = { 0xFF };
-      mOut(mem, 1);
-      // clear those flags, even if it is an array or a map
-      mInDefiniteBytes = false;
-      mInDefiniteString = false;
+      if (wasIndefinite)
+      {
+        mOut(mem, 1);
+        // clear those flags, even if it is an array or a map
+        mInDefiniteBytes = false;
+        mInDefiniteString = false;
+      }
     }
 
     void encoder::time(const char * value)
