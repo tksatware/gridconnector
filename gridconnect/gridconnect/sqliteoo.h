@@ -47,6 +47,7 @@ namespace satag
       friend class query;
     public:
       explicit db();
+      explicit db(sqlite3* handle);
       explicit db(const char* databasename, int flags, const char* vfs = nullptr);
       ~db();
       bool open(const char* databasename, int flags, const char* vfs = nullptr);
@@ -61,6 +62,7 @@ namespace satag
       bool rollback();
     protected:
       sqlite3* mDB = nullptr;
+      bool mOwned = true;
     };
 
     class field;

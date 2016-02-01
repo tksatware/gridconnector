@@ -39,7 +39,7 @@ The license above does not apply to and no license is granted for any Military U
 #include "curl/curl.h"
 
 #if WIN32
-// link the library
+// link the library, we're using libcurl on windows, too.
 #pragma comment(lib, "libcurl.lib")
 #endif
 
@@ -71,6 +71,7 @@ size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream)
 int main(int argc, char *argv[], char *envp[])
 {
 #if 0
+  // temporary tests regarding libcurl
   CURL *curl;
   CURLcode res;
 

@@ -27,15 +27,6 @@
 */
 
 
-/* note: unstable, untested code
-
-  implementation status: decoder is working
-  todo: 
-    - simple type "time" decoder
-    - encoder (all of it)
-    
-*/
-
 #include <stdint.h>
 #include <cassert>
 #include <vector>
@@ -45,21 +36,21 @@ namespace satag
 {
   namespace cbor
   {
-    typedef enum _errors
+    enum error : int_fast16_t
     {
-      none = 0,    // all is good
-      stateerror,       // statemachine gone to error state
-      wrongusage,   // a function has been used wrong in the code
-      illegalminor,   // minor doesn't match, like major=0,1 and minor > 27
+      none = 0,           // all is good
+      stateerror,         // statemachine gone to error state
+      wrongusage,         // a function has been used wrong in the code
+      illegalminor,       // minor doesn't match, like major=0,1 and minor > 27
       nestedindefstring,  // indefinite strings must not be nested
       nestedindefbytes,   // indefinite bytes must not be nested
-      illegalsimple,
+      illegalsimple,      // some simpletype is not supported
       illegaltag,         // a tag above 32bit might be... illegal?
       unevenmap,          // a map wasn't even
       unexpectedbreak,    // a break came in, but we have nothing on our stack
       notimplemented,     // bummer, I was lazy
       nodata,   // the input array stalled
-    } error;
+    };
 
     class listener
     {
@@ -80,7 +71,7 @@ namespace satag
       virtual void map(uint64_t nums) = 0;
       virtual void stringahead(uint64_t len) = 0;
       virtual void bytesahead(uint64_t len) = 0;
-      virtual void breakend(bool wasIndefinite) {}
+      virtual void breakend(bool wasIndefinite, bool stackempty) {}
       virtual void time(const char* value) = 0;
       virtual void time(int64_t value) = 0;
       virtual void onerror(error _err) {}
@@ -88,7 +79,7 @@ namespace satag
       listener() {}
     };
 
-    typedef enum _parserState
+    enum state_t : int_fast16_t
     {
       kSigma = 0,
       kReadInt8,
@@ -106,7 +97,7 @@ namespace satag
       kReadSimpleValue,
       kReadFloatValue,
       kError,
-    } state_t;
+    };
 
     class stackitem
     {
@@ -124,7 +115,7 @@ namespace satag
     class decoder
     {
     public:
-      decoder(listener& _listener, size_t bufferlen)
+      decoder(listener& _listener, const size_t bufferlen)
         : mOut(_listener)
         , mBufferLen(bufferlen)
       {
@@ -244,7 +235,7 @@ namespace satag
       virtual void map(uint64_t nums) override;
       virtual void stringahead(uint64_t len) override;
       virtual void bytesahead(uint64_t len) override;
-      virtual void breakend(bool wasIndefinite)  override;
+      virtual void breakend(bool wasIndefinite, bool stackempty) override;
       virtual void time(const char* value) override;
       virtual void time(int64_t value) override;
     private:

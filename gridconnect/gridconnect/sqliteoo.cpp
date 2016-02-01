@@ -39,6 +39,12 @@ namespace satag
     {
     }
 
+    db::db(sqlite3 * handle)
+    {
+      mDB = handle;
+      mOwned = false;
+    }
+
     db::db(const char* databasename, int flags, const char* vfs)
     {
       open(databasename, flags, vfs);
@@ -62,7 +68,10 @@ namespace satag
     {
       if (isOpen())
       {
-        sqlite3_close_v2(mDB);
+        if (mOwned)
+        {
+          sqlite3_close_v2(mDB);
+        }
         mDB = nullptr;
       }
     }

@@ -1,5 +1,10 @@
 /*
   storage
+  for
+   __       ___ ___  ___  __
+  |__)  /\   |   |  |__  |__) \_/
+  |__) /--\  |   |  |___ |  \ / \
+                     gridconnector
 
   bx::store is the datastore for the battery logging/control to and from the batterx grid
 
@@ -24,6 +29,7 @@
 
   The license above does not apply to and no license is granted for any Military Use.
 
+  
 
 */
 

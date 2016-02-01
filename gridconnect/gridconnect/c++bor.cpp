@@ -81,7 +81,8 @@ namespace satag
       mStack.clear();
       mErrorcode = none;
     }
-    bool decoder::parse(const uint8_t * mem, size_t bytesleft)
+
+    bool decoder::parse(const uint8_t * mem, const size_t bytesleft)
     {
       mMem = mem;
       mBytesLeft = bytesleft;
@@ -102,6 +103,8 @@ namespace satag
                   readPositiveOrNegativeInt(minor);
                   break;
                 case 2: // byte string
+                  readStringOrByteItem(minor);
+                  break;
                 case 3: // text string
                   readStringOrByteItem(minor);
                   break;
@@ -200,13 +203,13 @@ namespace satag
                 break;
               case 2:
                 mLength = mValue;
-                mState = kReadString;
-                mOut.stringahead(mLength);
+                mState = kReadBinary;
+                mOut.bytesahead(mLength);
                 break;
               case 3:
                 mLength = mValue;
-                mState = kReadBinary;
-                mOut.bytesahead(mLength);
+                mState = kReadString;
+                mOut.stringahead(mLength);
                 break;
               case 4:
                 {
@@ -216,7 +219,7 @@ namespace satag
                   {
                     // notify client about an empty array and return to start
                     mOut.array(0);
-                    mOut.breakend(false);
+                    mOut.breakend(false,mStack.empty());
                     countItem();
                   }
                   else
@@ -237,7 +240,7 @@ namespace satag
                   {
                     // notify client about an empty array and return to start
                     mOut.map(0);
-                    mOut.breakend(false);
+                    mOut.breakend(false, mStack.empty());
                     countItem();
                   }
                   else
@@ -268,15 +271,17 @@ namespace satag
             {
               if (available(mLength) && (mCollected == 0))
               {
+                // mOut.stringahead(mLength);
                 mOut.string((const char*)mMem, (size_t)mLength, true);
+                skip((size_t)mLength);
                 countItem();
               }
               else
               {
                 // the rest of the bytes must be part of the buffer
-                addToBuffer(mMem, bytesleft);
-                skip(bytesleft);
-                assert(bytesleft == 0);
+                addToBuffer(mMem, mBytesLeft);
+                skip(mBytesLeft);
+                assert(mBytesLeft == 0);
               }
             }
             else
@@ -299,15 +304,21 @@ namespace satag
             {
               if (available(mLength) && (mCollected == 0))
               {
+                // send it directly out
+                // announcement:
+                // mOut.bytesahead(mLength);
+                // full length
                 mOut.bytes(mMem, (size_t)mLength, true);
+                // skip our input stream
+                skip((size_t)mLength);
                 countItem();
               }
               else
               {
                 // the rest of the bytes must be part of the buffer
-                addToBuffer(mMem, bytesleft);
-                skip(bytesleft);
-                assert(bytesleft == 0);
+                addToBuffer(mMem, mBytesLeft);
+                skip(mBytesLeft);
+                assert(mBytesLeft == 0);
               }
             }
             else
@@ -590,7 +601,7 @@ namespace satag
         mOut.array(minor);
         if (minor == 0)
         {
-          mOut.breakend(false);
+          mOut.breakend(false, mStack.empty());
           countItem();
         }
         else
@@ -634,7 +645,7 @@ namespace satag
         mOut.map(minor);
         if (minor == 0)
         {
-          mOut.breakend(false);
+          mOut.breakend(false, mStack.empty());
           countItem();
         }
         else
@@ -803,14 +814,14 @@ namespace satag
               case kReadBinary:
                 assert(mIndefiniteString || mIndefiniteBytes);
                 flushBuffer();
-                mOut.breakend(true);
+                mOut.breakend(true, mStack.size() == 1);
                 countItem();
                 mIndefiniteString = false;
                 mIndefiniteBytes = false;
                 mState = kSigma;
                 break;
               case kReadArray:
-                mOut.breakend(true);
+                mOut.breakend(true, mStack.size() == 1);
                 countItem();
                 mState = kSigma;
                 break;
@@ -821,7 +832,7 @@ namespace satag
                 }
                 else
                 {
-                  mOut.breakend(true);
+                  mOut.breakend(true, mStack.size() == 1);
                   countItem();
                   mState = kSigma;
                 }
@@ -893,6 +904,7 @@ namespace satag
       memcpy(mBuffer + mCollected, mem, len);
       mCollected += len;
       mCollectedTotal += len;
+      assert(mCollectedTotal <= mLength);
       if (mCollectedTotal == mLength)
       {
         if (mState == kReadBinary)
@@ -949,8 +961,8 @@ namespace satag
               if (o.numItems == 0)
               {
                 // issue break, pop back
-                mOut.breakend(false);
                 mStack.pop_back();
+                mOut.breakend(false, mStack.empty());
                 countItem();
                 mState = kSigma;
               }
@@ -971,8 +983,8 @@ namespace satag
                 if (o.numItems == 0)
                 {
                   // issue break, pop back
-                  mOut.breakend(false);
                   mStack.pop_back();
+                  mOut.breakend(false, mStack.empty());
                   countItem();
                   mState = kSigma;
                 }
@@ -1097,7 +1109,7 @@ namespace satag
       mOut(mem, 9);
     }
 
-    void satag::cbor::encoder::int64n(uint64_t value)
+    void encoder::int64n(uint64_t value)
     {
       uint8_t mem[10];
       mem[0] = 0x20 | 27; // 001 11011
@@ -1153,7 +1165,7 @@ namespace satag
         if (complete)
         {
           uint8_t m[10];
-          size_t b = writeMajor(m, 3, len);
+          size_t b = writeMajor(m, 2, len);
           mOut(m, b);
           // write the data
           mOut(mem, len);
@@ -1277,7 +1289,7 @@ namespace satag
       }
     }
 
-    void encoder::breakend(bool wasIndefinite)
+    void encoder::breakend(bool wasIndefinite, bool stackempty)
     {
       static uint8_t mem[] = { 0xFF };
       if (wasIndefinite)
