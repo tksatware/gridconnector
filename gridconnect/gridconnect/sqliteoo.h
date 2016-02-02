@@ -5,21 +5,21 @@
 
   Copyright (c)   (c) 2015,2016 tk@satware.com
 
-  Permission is hereby granted, free of charge, to any person obtaining a copy of this 
-  software and associated documentation files (the "Software"), to deal in the Software 
-  without restriction, including without limitation the rights to use, copy, modify, 
-  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to 
-  permit persons to whom the Software is furnished to do so, subject to the following 
+  Permission is hereby granted, free of charge, to any person obtaining a copy of this
+  software and associated documentation files (the "Software"), to deal in the Software
+  without restriction, including without limitation the rights to use, copy, modify,
+  merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  permit persons to whom the Software is furnished to do so, subject to the following
   conditions:
 
-  The above copyright notice and this permission notice shall be included in all copies 
+  The above copyright notice and this permission notice shall be included in all copies
   or substantial portions of the Software.
 
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
-  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
-  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR 
-  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+  PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+  OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
   DEALINGS IN THE SOFTWARE.
 
   The license above does not apply to and no license is granted for any Military Use.
@@ -39,7 +39,7 @@ namespace satag
 
     /*
       the db class abstracts a database entity
-      it supports direct type conversion to sqlite3*, so it can seamlessly be used with the 
+      it supports direct type conversion to sqlite3*, so it can seamlessly be used with the
       sqlite3 API functions without any "getDBHandle()" function or similar
     */
     class db
@@ -166,11 +166,13 @@ namespace satag
       {}
       void operator=(const int i) { sqlite3_bind_int(_q, _i, i); }
       void operator=(const int64_t i) { sqlite3_bind_int64(_q, _i, i); }
+      void operator=(const uint64_t i) { sqlite3_bind_int64(_q, _i, (int64_t)i); }
+      void operator=(const time_t i) { sqlite3_bind_int64(_q, _i, (int64_t)i); }
       void operator=(const char* s) { sqlite3_bind_text(_q, _i, s, -1, SQLITE_STATIC); }
       void operator=(const std::string &s) { sqlite3_bind_text(_q, _i, s.c_str(), -1, SQLITE_STATIC); }
       void operator=(const sqlite3_value* val) { sqlite3_bind_value(_q, _i, val); }
       void operator=(const field &f) { sqlite3_bind_value(_q, _i, f); }
-      void operator=(const blob &b) { sqlite3_bind_blob(_q, _i, b, b.size(), SQLITE_STATIC); }
+      void operator=(const blob &b) { sqlite3_bind_blob(_q, _i, b, (int) b.size(), SQLITE_STATIC); }
     protected:
       query& _q;
       size_t _i;

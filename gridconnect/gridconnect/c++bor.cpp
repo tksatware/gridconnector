@@ -29,7 +29,9 @@
 #include "c++bor.h"
 #include <cassert>
 #include <iostream>
+#include <cstring>
 #include <cmath>
+#include <algorithm>
 
 namespace satag
 {
@@ -376,6 +378,10 @@ namespace satag
             // do nothing, it is broken now...
             // TODO: Consider resetting on a self describing CBOR
             break;
+          default:
+
+            take1();
+            raiseError(stateerror); // stateerror
         }
       }
       return (mErrorcode != none);
@@ -394,7 +400,7 @@ namespace satag
         int len = minor; //  &0x1f;
         if (len < 24)
         {
-          // len is immediate value (see 
+          // len is immediate value (see
           mOut.int32((mMajor == 0) ? len : (-(len + 1)));
           countItem();
           // state stays kSigma
@@ -569,7 +575,7 @@ namespace satag
       // if we haven't decided to go to the read length part of the statemachine, we might immediately check connect this
       if (mState == kSigma)
       {
-        // if the current buffer part contains enough bytes for the data, it should 
+        // if the current buffer part contains enough bytes for the data, it should
         // be emitted immediately, skipping the state machine
         if (available(mLength))
         {
@@ -690,7 +696,7 @@ namespace satag
         int len = minor; //  &0x1f;
         if (len < 24)
         {
-          // len is immediate value (see 
+          // len is immediate value (see
           mOut.tag(len);
           // state stays kSigma
         }
@@ -901,7 +907,7 @@ namespace satag
         // the buffer is clear now
       }
 
-      memcpy(mBuffer + mCollected, mem, len);
+      std::memcpy(mBuffer + mCollected, mem, len);
       mCollected += len;
       mCollectedTotal += len;
       assert(mCollectedTotal <= mLength);
@@ -999,6 +1005,9 @@ namespace satag
                 mMapKeyAhead = true;
               }
             }
+            break;
+          default:
+            // this is okay, nothing to worry about
             break;
         }
       }

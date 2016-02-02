@@ -26,7 +26,7 @@ The license above does not apply to and no license is granted for any Military U
 */
 
 #include <vector>
-#include <conio.h>    // just for _getch(), remove it later
+// #include <conio.h>    // just for _getch(), remove it later
 #include <iostream>
 #include <algorithm>
 #include <iterator>
@@ -38,6 +38,7 @@ The license above does not apply to and no license is granted for any Military U
 
 #include "curl/curl.h"
 
+#include <stdio.h>
 #if WIN32
 // link the library, we're using libcurl on windows, too.
 #pragma comment(lib, "libcurl.lib")
@@ -52,8 +53,8 @@ static satag::energy::bx::store gStore;
 uint8_t blob[65536];
 size_t bloblen = 0;
 
-size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) 
-{  
+size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
   size_t len = nmemb*size;
   if (bloblen + len < sizeof(blob))
   {
@@ -102,7 +103,7 @@ int main(int argc, char *argv[], char *envp[])
 #if 0
   {
     // testing cbor decoder/encoder
-    uint8_t l[] = { 
+    uint8_t l[] = {
       // 0xf9,0x7e,0x00,                                     // infinity
       0xd9,0xd9,0xf7,0x05,0x03,0x63,65,66,67,0x82,0x01,0x82,0x02,0x03,01,
       0x65,0x54,0x65,0x73,0x74,0x73,
@@ -123,11 +124,11 @@ int main(int argc, char *argv[], char *envp[])
     std::vector<uint8_t> out;
     out.reserve(32768);
     satag::cbor::encoder e(
-      [&](const uint8_t* mem, size_t len) 
+      [&](const uint8_t* mem, size_t len)
     {
       out.insert(out.end(), &mem[0], &mem[len]);
     });
-    
+
     satag::cbor::decoder z(e,8192);
     z.parse(l, sizeof(l));
     std::cout << "parse result: " << (z.ok() ? "ok" : "failed") << std::endl;
@@ -181,7 +182,7 @@ int main(int argc, char *argv[], char *envp[])
 
     do
     {
-      auto c = _getch();
+      auto c = getc(stdin);
       if (c == ' ')
         break;
     } while (true);
