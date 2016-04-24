@@ -76,9 +76,9 @@ namespace satag
       virtual void time(const char* value) = 0;
       virtual void time(int64_t value) = 0;
       virtual void onerror(error _err) {}
+      virtual ~listener() {}
     protected:
       listener() {}
-      virtual ~listener() {}
     };
 
     enum state_t : int_fast16_t

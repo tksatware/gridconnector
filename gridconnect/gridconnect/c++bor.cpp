@@ -281,9 +281,13 @@ namespace satag
               else
               {
                 // the rest of the bytes must be part of the buffer
-                addToBuffer(mMem, mBytesLeft);
-                skip(mBytesLeft);
-                assert(mBytesLeft == 0);
+                auto rest = mLength-mCollected;
+                if ( rest > mBytesLeft)
+                {
+                  rest = mBytesLeft;
+                }
+                addToBuffer(mMem, rest);
+                skip(rest);
               }
             }
             else
@@ -318,9 +322,13 @@ namespace satag
               else
               {
                 // the rest of the bytes must be part of the buffer
-                addToBuffer(mMem, mBytesLeft);
-                skip(mBytesLeft);
-                assert(mBytesLeft == 0);
+                auto rest = mLength-mCollected;
+                if ( rest > mBytesLeft)
+                {
+                  rest = mBytesLeft;
+                }
+                addToBuffer(mMem, rest);
+                skip(rest);
               }
             }
             else
@@ -907,7 +915,7 @@ namespace satag
         // the buffer is clear now
       }
 
-      std::memcpy(mBuffer + mCollected, mem, len);
+      memcpy(mBuffer + mCollected, mem, len);
       mCollected += len;
       mCollectedTotal += len;
       assert(mCollectedTotal <= mLength);
